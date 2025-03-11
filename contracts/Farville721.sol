@@ -13,6 +13,10 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 contract FarvilleOG is ERC721Royalty, Ownable {
     /// @notice Error thrown when attempting to mint an already minted token
     error TokenAlreadyMinted();
+    /// @notice Error thrown when attempting to mint an already minted address
+    error AddressAlreadyMinted();
+    /// @notice Error thrown when merkle root is not set
+    error InvalidMerkleRoot();
     /// @notice Error thrown when merkle proof verification fails
     error InvalidMerkleProof();
 
@@ -27,6 +31,10 @@ contract FarvilleOG is ERC721Royalty, Ownable {
     /// @notice Mapping to track which token IDs have been minted
     /// @dev Maps token ID to minting status
     mapping(uint256 => bool) public minted;
+
+    /// @notice Mapping to track which addresses have minted
+    /// @dev Maps address to minting status
+    mapping(address => bool) public hasMinted;
     
     /// @notice Initializes the FarvilleOG NFT contract
     /// @dev Sets up the NFT collection with royalty information and merkle root
@@ -39,6 +47,7 @@ contract FarvilleOG is ERC721Royalty, Ownable {
         ERC721("FarvilleOG", "FOG")
         Ownable(initialOwner)
     {
+        if (_merkleRoot == bytes32(0)) revert InvalidMerkleRoot();
         _setDefaultRoyalty(royaltyRecipient, royaltyFee);
         merkleRoot = _merkleRoot;
         baseURI = _baseUri;
@@ -57,16 +66,14 @@ contract FarvilleOG is ERC721Royalty, Ownable {
     /// @param proof The merkle proof to verify eligibility
     function mint(uint256 tokenId, bytes32[] calldata proof) external {
         if (minted[tokenId]) revert TokenAlreadyMinted();
-
-        // Compute the leaf node (hash of address and tokenId)
-        bytes32 leaf = keccak256(abi.encode(msg.sender, tokenId));
-
+        if (hasMinted[msg.sender]) revert AddressAlreadyMinted();
+        // Compute the leaf node 
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(msg.sender, tokenId))));
         // Verify the proof
         if (!MerkleProof.verify(proof, merkleRoot, leaf)) revert InvalidMerkleProof();
-
         // Mark the token ID as minted
         minted[tokenId] = true;
-
+        hasMinted[msg.sender] = true;
         // Mint the NFT
         _safeMint(msg.sender, tokenId);
     }
