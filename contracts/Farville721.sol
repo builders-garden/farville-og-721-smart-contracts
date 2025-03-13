@@ -6,11 +6,12 @@ import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Royalty.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 /// @title FarvilleOG NFT Contract
 /// @notice This contract implements the FarvilleOG NFT collection with merkle proof verification
 /// @dev Extends ERC721Royalty and Ownable for NFT functionality with royalties
-contract FarvilleOG is ERC721Royalty, Ownable {
+contract FarvilleOG is ERC721Royalty, Ownable, Pausable {
     /// @notice Error thrown when attempting to mint an already minted token
     error TokenAlreadyMinted();
     /// @notice Error thrown when attempting to mint an already minted address
@@ -60,11 +61,23 @@ contract FarvilleOG is ERC721Royalty, Ownable {
         baseURI = newURI;
     }
 
+    /// @notice Pauses all token minting
+    /// @dev Only the contract owner can pause
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /// @notice Unpauses all token minting
+    /// @dev Only the contract owner can unpause
+    function unpause() external onlyOwner {
+        _unpause();
+    }
+
     /// @notice Mints a new FarvilleOG NFT
     /// @dev Verifies merkle proof before minting
     /// @param tokenId The ID of the token to mint
     /// @param proof The merkle proof to verify eligibility
-    function mint(uint256 tokenId, bytes32[] calldata proof) external {
+    function mint(uint256 tokenId, bytes32[] calldata proof) external whenNotPaused {
         if (minted[tokenId]) revert TokenAlreadyMinted();
         if (hasMinted[msg.sender]) revert AddressAlreadyMinted();
         // Compute the leaf node 
