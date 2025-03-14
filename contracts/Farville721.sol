@@ -6,11 +6,12 @@ import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Royalty.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 
 /// @title FarvilleOG NFT Contract
 /// @notice This contract implements the FarvilleOG NFT collection with merkle proof verification
 /// @dev Extends ERC721Royalty and Ownable for NFT functionality with royalties
+/// @dev Implements MerkleProof for merkle proof verification of whitelisted addresses when minting
 contract FarvilleOG is ERC721Royalty, Ownable, Pausable {
     /// @notice Error thrown when attempting to mint an already minted token
     error TokenAlreadyMinted();
@@ -23,7 +24,7 @@ contract FarvilleOG is ERC721Royalty, Ownable, Pausable {
 
     /// @notice The merkle root used for validating mint eligibility
     /// @dev Immutable value set during contract deployment
-    bytes32 immutable public merkleRoot;
+    bytes32 private merkleRoot;
 
     /// @notice The base URI for token metadata
     /// @dev Immutable value set during contract deployment
@@ -61,6 +62,14 @@ contract FarvilleOG is ERC721Royalty, Ownable, Pausable {
         baseURI = newURI;
     }
 
+    /// @notice Sets the merkle root for validating mint eligibility
+    /// @dev Only the contract owner can set the merkle root
+    /// @param newMerkleRoot The new merkle root to set
+    function setMerkleRoot(bytes32 newMerkleRoot) external onlyOwner {
+        if (newMerkleRoot == bytes32(0)) revert InvalidMerkleRoot();
+        merkleRoot = newMerkleRoot;
+    }
+
     /// @notice Pauses all token minting
     /// @dev Only the contract owner can pause
     function pause() external onlyOwner {
@@ -86,6 +95,7 @@ contract FarvilleOG is ERC721Royalty, Ownable, Pausable {
         if (!MerkleProof.verify(proof, merkleRoot, leaf)) revert InvalidMerkleProof();
         // Mark the token ID as minted
         minted[tokenId] = true;
+        // Mark the address as minted
         hasMinted[msg.sender] = true;
         // Mint the NFT
         _safeMint(msg.sender, tokenId);
