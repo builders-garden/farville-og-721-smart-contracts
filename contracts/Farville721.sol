@@ -107,4 +107,12 @@ contract FarvilleOG is ERC721Royalty, Ownable, Pausable {
     function _baseURI() internal view override returns (string memory) {
         return baseURI;
     }
+
+    /// @notice Returns the token URI for a given token ID
+    /// @dev Override of the ERC721 tokenURI function
+    /// @param tokenId The ID of the token to get the URI for
+    /// @return Token URI string
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        return baseURI;
+    }
 }
